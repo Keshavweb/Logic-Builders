@@ -1,27 +1,27 @@
 import { useMemo, useState } from 'react'
 import type { BatchProgress, BatchRow, DisputeRecord, ScreenName } from './types'
-import { processBatchDispute } from './services/disputeService'
-import { defaultDisputes } from './services/disputeService'
+import { processBatchDispute, defaultDisputes } from './services/disputeService'
+import Header from './components/Header'
 import BatchIntake from './components/BatchIntake'
 import ReviewQueue from './components/ReviewQueue'
 import OutcomeHistory from './components/OutcomeHistory'
 import Toast from './components/Toast'
+import Login from './components/Login'
+import Signup from './components/Signup'
+import PipelineFlow from './components/PipelineFlow'
+import Footer from './components/Footer'
+import HeroHeader from './components/HeroHeader'
 
 function App() {
-  const [screen, setScreen] = useState<ScreenName>('intake')
+  const [screen, setScreen] = useState<ScreenName>('front')
   const [uploadedRows, setUploadedRows] = useState<BatchRow[]>([])
   const [batchProgress, setBatchProgress] = useState<BatchProgress[]>([])
   const [disputes, setDisputes] = useState<DisputeRecord[]>(defaultDisputes)
   const [toast, setToast] = useState<string | null>(null)
 
-  // ---------- Helpers ----------
-
   const showToast = (message: string) => {
-    setToast(message)
-    window.setTimeout(() => setToast(null), 2800)
-  }
-
-  // ---------- Derived data ----------
+  setToast(message)
+}
 
   const queueDisputes = useMemo(
     () => disputes.filter((d) => d.status === 'pending_review'),
@@ -42,8 +42,6 @@ function App() {
       e.status === 'building_profile' ||
       e.status === 'drafting_evidence',
   )
-
-  // ---------- Batch processing ----------
 
   const runBatch = async () => {
     if (!uploadedRows.length) {
@@ -101,8 +99,6 @@ function App() {
     }
   }
 
-  // ---------- Approve / Reject ----------
-
   const handleApprove = (id: string) => {
     const submittedAt = new Date().toISOString()
     setDisputes((prev) =>
@@ -131,73 +127,70 @@ function App() {
     showToast('Dispute rejected and logged for follow-up.')
   }
 
-  // ---------- Nav ----------
-
-  const navItems: { key: ScreenName; label: string }[] = [
-    { key: 'intake', label: 'Batch Intake' },
-    { key: 'review', label: 'Review Queue' },
-    { key: 'history', label: 'Outcome History' },
-  ]
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-surface-alt to-surface">
-      {/* Topbar */}
-      <header className="flex flex-col items-center justify-between gap-4 border-b border-border bg-white/85 px-8 pt-6 pb-5 backdrop-blur-sm sm:flex-row max-sm:px-4">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
-            Merchant operations
-          </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tighter text-text-primary">
-            Chargeback Defender
-          </h1>
-        </div>
-        <nav
-          className="flex items-center gap-1.5 rounded-full bg-nav-bg p-1.5"
-          aria-label="Main navigation"
-        >
-          {navItems.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all ${
-                screen === item.key
-                  ? 'bg-white text-text-primary shadow-md shadow-nav-active-shadow'
-                  : 'bg-transparent text-text-muted hover:text-text-primary'
-              }`}
-              onClick={() => setScreen(item.key)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </header>
+    <div className="min-h-screen bg-black text-white font-inter">
+      {/* Header Component */}
+      <Header currentScreen={screen} onNavigate={(targetScreen) => setScreen(targetScreen)} />
 
       {/* Toast */}
       <Toast message={toast} />
 
       {/* Screens */}
-      {screen === 'intake' && (
-        <BatchIntake
-          uploadedRows={uploadedRows}
-          setUploadedRows={setUploadedRows}
-          batchProgress={batchProgress}
-          isBatchActive={isBatchActive}
-          onRunBatch={runBatch}
-          showToast={showToast}
-        />
-      )}
-      {screen === 'review' && (
-        <ReviewQueue
-          queueDisputes={queueDisputes}
-          batchProgress={batchProgress}
-          isBatchActive={isBatchActive}
-          onApprove={handleApprove}
-          onReject={handleReject}
-        />
-      )}
-      {screen === 'history' && (
-        <OutcomeHistory historyDisputes={historyDisputes} />
-      )}
+      <main className="p-6">
+        {screen === 'front' && (
+          <section className="flex flex-col items-center justify-start min-h-screen text-white px-6 pt-24 pb-16">
+            <HeroHeader onGetStarted={() => setScreen('signup')} />
+            <PipelineFlow />
+          </section>
+        )}
+
+        {screen === 'intake' && (
+          <BatchIntake
+            uploadedRows={uploadedRows}
+            setUploadedRows={setUploadedRows}
+            batchProgress={batchProgress}
+            isBatchActive={isBatchActive}
+            onRunBatch={runBatch}
+            showToast={showToast}
+          />
+        )}
+
+        {screen === 'review' && (
+          <ReviewQueue
+            queueDisputes={queueDisputes}
+            batchProgress={batchProgress}
+            isBatchActive={isBatchActive}
+            onApprove={handleApprove}
+            onReject={handleReject}
+          />
+        )}
+
+        {screen === 'history' && (
+          <OutcomeHistory historyDisputes={historyDisputes} />
+        )}
+
+        {screen === 'login' && (
+          <Login
+            onLogin={(email) => {
+              showToast(`Welcome back, ${email}`)
+              setScreen('front')
+            }}
+            goToSignup={() => setScreen('signup')}
+          />
+        )}
+
+        {screen === 'signup' && (
+          <Signup
+            onSignup={(email) => {
+              showToast(`Welcome, ${email}! Account created.`)
+              setScreen('front')
+            }}
+            goToLogin={() => setScreen('login')}
+          />
+        )}
+      </main>
+      
+      <Footer onNavigate={(targetScreen) => setScreen(targetScreen)} />
     </div>
   )
 }

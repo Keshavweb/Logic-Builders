@@ -1,17 +1,17 @@
 import type { AllStatus } from '../types'
 
 const statusStyles: Record<string, string> = {
-  queued: 'bg-nav-bg text-text-muted',
-  building_profile: 'bg-brand-bg text-brand-dark',
-  drafting_evidence: 'bg-purple-bg text-purple',
-  ready: 'bg-brand-bg text-brand-dark',
-  submitted: 'bg-brand-bg text-brand-dark',
-  pending_review: 'bg-purple-bg text-purple',
-  pending: 'bg-purple-bg text-purple',
-  won: 'bg-success-bg text-success',
-  lost: 'bg-danger-bg text-danger',
-  rejected: 'bg-warning-bg text-warning',
-  failed: 'bg-danger-bg text-danger',
+  queued: 'border border-gray-700 bg-gray-800/80 text-gray-300',
+  building_profile: 'border border-blue-800/60 bg-blue-950/80 text-blue-300',
+  drafting_evidence: 'border border-purple-800/60 bg-purple-950/80 text-purple-300',
+  ready: 'border border-blue-800/60 bg-blue-950/80 text-blue-300',
+  submitted: 'border border-blue-800/60 bg-blue-950/80 text-blue-300',
+  pending_review: 'border border-purple-800/60 bg-purple-950/80 text-purple-300',
+  pending: 'border border-purple-800/60 bg-purple-950/80 text-purple-300',
+  won: 'border border-green-800/60 bg-green-950/80 text-green-300',
+  lost: 'border border-red-800/60 bg-red-950/80 text-red-300',
+  rejected: 'border border-amber-800/60 bg-amber-950/80 text-amber-300',
+  failed: 'border border-red-800/60 bg-red-950/80 text-red-300',
 }
 
 const statusLabels: Record<string, string> = {

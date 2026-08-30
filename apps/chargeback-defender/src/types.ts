@@ -1,4 +1,10 @@
-export type ScreenName = 'intake' | 'review' | 'history'
+export type ScreenName = 
+  | 'front' 
+  | 'intake' 
+  | 'review' 
+  | 'history' 
+  | 'login' 
+  | 'signup'
 
 export type BatchStatus =
   | 'queued'

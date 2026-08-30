@@ -84,6 +84,7 @@ export default function BatchIntake({
         const msg = `CSV parse failed: ${error.message}`
         setParseError(msg)
         showToast(msg)
+        return
       },
     })
   }
@@ -102,16 +103,20 @@ export default function BatchIntake({
 
   return (
     <main className="px-8 pt-7 pb-12 max-sm:px-4">
-      <section className="mx-auto max-w-4xl rounded-2xl border border-border bg-panel p-6 shadow-lg shadow-shadow-panel">
+      <section className="mx-auto max-w-4xl rounded-2xl border border-gray-800 bg-gray-900/90 p-6 shadow-2xl backdrop-blur-sm">
         {/* Header */}
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">Incoming dispute batch</p>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-text-primary">Upload CSV</h2>
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+              Incoming dispute batch
+            </p>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight text-white">
+              Upload CSV
+            </h2>
           </div>
           <button
             type="button"
-            className="rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-55"
+            className="rounded-lg bg-blue-950/80 hover:bg-blue-900 border border-blue-800/60 px-5 py-2.5 text-xs font-semibold text-blue-200 transition duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!uploadedRows.length || isBatchActive}
             onClick={onRunBatch}
           >
@@ -121,10 +126,10 @@ export default function BatchIntake({
 
         {/* Drop zone */}
         <div
-          className={`relative flex min-h-44 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed transition-colors ${
+          className={`relative flex min-h-48 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-all duration-200 ${
             dragActive
-              ? 'border-brand bg-brand-bg-light'
-              : 'border-border bg-gradient-to-br from-surface to-surface-alt'
+              ? 'border-blue-500 bg-blue-950/30'
+              : 'border-gray-800 bg-gray-950/60 hover:border-gray-700'
           }`}
           onDragOver={(e) => {
             e.preventDefault()
@@ -140,55 +145,54 @@ export default function BatchIntake({
             aria-label="CSV upload file"
             className="absolute inset-0 cursor-pointer opacity-0"
           />
-          <div className="flex flex-col items-center gap-1.5 text-text-secondary">
-            <svg className="mb-2 h-10 w-10 text-text-secondary opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-            </svg>
-            <strong className="text-lg text-text-primary">Drag and drop CSV</strong>
-            <span className="text-sm">or click to browse</span>
+          <div className="flex flex-col items-center gap-2 text-center p-6">
+            <div className="w-12 h-12 rounded-full bg-blue-950/80 border border-blue-800/60 flex items-center justify-center text-blue-400 mb-1">
+              <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+            </div>
+            <strong className="text-base font-semibold text-white">Drag and drop CSV</strong>
+            <span className="text-xs text-gray-400">or click anywhere to browse files</span>
           </div>
         </div>
 
         {/* Parse error */}
         {parseError && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-danger">
+          <div className="mt-4 rounded-xl border border-red-900/50 bg-red-950/40 p-3 text-xs text-red-300">
             {parseError}
           </div>
         )}
 
         {/* Preview table */}
         {uploadedRows.length > 0 ? (
-          <div className="mt-5">
+          <div className="mt-6">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-base font-bold text-text-primary">Batch preview</h3>
-              <span className="rounded-full bg-brand-bg px-3 py-0.5 text-xs font-bold text-brand-dark">
+              <h3 className="text-sm font-semibold text-gray-200">Batch preview</h3>
+              <span className="rounded-full bg-blue-950 border border-blue-800/60 px-3 py-0.5 text-xs font-semibold text-blue-300">
                 {uploadedRows.length} rows
               </span>
             </div>
-            <div className="w-full overflow-x-auto rounded-xl border border-border bg-white">
-              <table className="w-full min-w-[760px] border-collapse">
+            <div className="w-full overflow-x-auto rounded-xl border border-gray-800 bg-gray-950">
+              <table className="w-full min-w-[760px] border-collapse text-left text-xs">
                 <thead>
-                  <tr>
+                  <tr className="border-b border-gray-800 bg-gray-900/80 text-gray-400 font-medium uppercase">
                     {REQUIRED_CSV_COLUMNS.map((col) => (
-                      <th
-                        key={col}
-                        className="border-b border-border-light bg-surface px-3.5 py-3 text-left text-xs font-medium uppercase tracking-wider text-text-secondary"
-                      >
+                      <th key={col} className="px-3.5 py-3">
                         {col}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-800/60 text-gray-300">
                   {uploadedRows.map((row) => (
-                    <tr key={`${row.dispute_id}-${row.transaction_id}`} className="transition-colors hover:bg-blue-50/40">
-                      <td className="border-b border-border-light px-3.5 py-3 text-sm">{row.dispute_id}</td>
-                      <td className="border-b border-border-light px-3.5 py-3 text-sm">{row.order_id}</td>
-                      <td className="border-b border-border-light px-3.5 py-3 text-sm">{row.customer_id}</td>
-                      <td className="border-b border-border-light px-3.5 py-3 text-sm">{row.reason_code}</td>
-                      <td className="border-b border-border-light px-3.5 py-3 text-sm">{formatCurrency(Number.parseFloat(row.amount) || 0)}</td>
-                      <td className="border-b border-border-light px-3.5 py-3 text-sm">{formatDate(row.deadline)}</td>
-                      <td className="border-b border-border-light px-3.5 py-3 text-sm">{row.transaction_id}</td>
+                    <tr key={`${row.dispute_id}-${row.transaction_id}`} className="hover:bg-gray-900/50 transition">
+                      <td className="px-3.5 py-3 font-mono text-blue-400">{row.dispute_id}</td>
+                      <td className="px-3.5 py-3 font-mono text-gray-300">{row.order_id}</td>
+                      <td className="px-3.5 py-3 text-gray-300">{row.customer_id}</td>
+                      <td className="px-3.5 py-3 text-gray-400">{row.reason_code}</td>
+                      <td className="px-3.5 py-3 font-medium text-white">{formatCurrency(Number.parseFloat(row.amount) || 0)}</td>
+                      <td className="px-3.5 py-3 text-gray-400">{formatDate(row.deadline)}</td>
+                      <td className="px-3.5 py-3 font-mono text-gray-400">{row.transaction_id}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -196,27 +200,27 @@ export default function BatchIntake({
             </div>
           </div>
         ) : !batchProgress.length ? (
-          <div className="mt-5 rounded-2xl border border-dashed border-border bg-surface p-7 text-center text-text-secondary">
-            <h3 className="mb-1.5 text-base font-bold text-text-primary">No batch uploaded yet</h3>
-            <p className="text-sm">Upload a CSV with 10–15 disputes to begin the review loop.</p>
+          <div className="mt-6 rounded-xl border border-dashed border-gray-800 bg-gray-950/40 p-8 text-center text-gray-400">
+            <h3 className="mb-1 text-sm font-semibold text-gray-300">No batch uploaded yet</h3>
+            <p className="text-xs text-gray-500">Upload a CSV with 10–15 disputes to begin the review loop.</p>
           </div>
         ) : null}
 
         {/* Batch processing progress */}
         {batchProgress.length > 0 && (
-          <div className="mt-5">
-            <h3 className="mb-3 text-base font-bold text-text-primary">Processing status</h3>
+          <div className="mt-6">
+            <h3 className="mb-3 text-sm font-semibold text-gray-200">Processing status</h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {batchProgress.map((entry) => (
-                <div key={entry.disputeId} className="rounded-xl border border-border bg-surface p-3">
+                <div key={entry.disputeId} className="rounded-xl border border-gray-800 bg-gray-950 p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs font-medium uppercase tracking-wider text-text-secondary">
+                    <span className="text-xs font-mono font-medium text-gray-400">
                       {entry.disputeId}
                     </span>
                     <StatusChip status={entry.status} label={entry.label} />
                   </div>
                   {entry.error && (
-                    <p className="mt-2 text-xs text-danger">{entry.error}</p>
+                    <p className="mt-2 text-xs text-red-400">{entry.error}</p>
                   )}
                 </div>
               ))}
