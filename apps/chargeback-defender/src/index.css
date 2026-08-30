@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: Inter, 'Segoe UI', sans-serif;
+  --color-surface: #f8fafc;
+  --color-surface-alt: #eef2ff;
+  --color-panel: rgba(255, 255, 255, 0.8);
+  --color-border: #dfe7f5;
+  --color-border-light: #edf2f7;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #334155;
+  --color-brand: #2563eb;
+  --color-brand-dark: #1d4ed8;
+  --color-brand-bg: #dbeafe;
+  --color-brand-bg-light: #eff6ff;
+  --color-success: #15803d;
+  --color-success-bg: #dcfce7;
+  --color-danger: #b91c1c;
+  --color-danger-bg: #fee2e2;
+  --color-danger-rose: #be123c;
+  --color-danger-rose-bg: #ffe4e6;
+  --color-warning: #92400e;
+  --color-warning-bg: #fef3c7;
+  --color-warning-text: #b45309;
+  --color-warning-orange: #7c2d12;
+  --color-warning-orange-bg: #fff7ed;
+  --color-warning-orange-border: #fed7aa;
+  --color-purple: #7c3aed;
+  --color-purple-bg: #f3e8ff;
+  --color-nav-bg: #e2e8f0;
+  --color-nav-active-shadow: rgba(15, 23, 42, 0.08);
+  --color-shadow-toast: rgba(15, 23, 42, 0.18);
+  --color-shadow-panel: rgba(15, 23, 42, 0.04);
+}
