@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Meeting Notes",
+      "type": "msedge",
+      "request": "launch",
+      "url": "https://staging.rocketride.ai:443/?appid=local.meeting-notes&rrdev=1",
+      "webRoot": "${workspaceFolder}/apps/meeting-notes-ui",
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${workspaceFolder}/apps/meeting-notes-ui/*",
+        "webpack:///*": "*"
+      }
+    },
+    {
+      "name": "Debug Meeting Intelligence App",
+      "type": "msedge",
+      "request": "launch",
+      "url": "https://staging.rocketride.ai:443/?appid=keshavapp.meeting-intelligence-app&rrdev=1",
+      "webRoot": "${workspaceFolder}/apps/meeting-intelligence-app-ui",
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${workspaceFolder}/apps/meeting-intelligence-app-ui/*",
+        "webpack:///*": "*"
+      }
+    },
+    {
+      "name": "Debug Meeting Intelligence App1",
+      "type": "msedge",
+      "request": "launch",
+      "url": "https://staging.rocketride.ai:443/?appid=keshavapp.meeting-intelligence-app1&rrdev=1",
+      "webRoot": "${workspaceFolder}/apps/meeting-intelligence-app1-ui",
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${workspaceFolder}/apps/meeting-intelligence-app1-ui/*",
+        "webpack:///*": "*"
+      }
+    }
+  ]
+}
