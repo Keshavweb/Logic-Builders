@@ -173,7 +173,7 @@ export default function BatchIntake({
               </span>
             </div>
             <div className="w-full overflow-x-auto rounded-xl border border-gray-800 bg-gray-950">
-              <table className="w-full min-w-[760px] border-collapse text-left text-xs">
+              <table className="w-full min-w-190 border-collapse text-left text-xs">
                 <thead>
                   <tr className="border-b border-gray-800 bg-gray-900/80 text-gray-400 font-medium uppercase">
                     {REQUIRED_CSV_COLUMNS.map((col) => (

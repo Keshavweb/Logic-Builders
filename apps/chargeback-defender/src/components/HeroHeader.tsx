@@ -6,7 +6,7 @@ export default function HeroHeader({ onGetStarted }: HeroHeaderProps) {
   return (
     <div className="flex flex-col items-center text-center relative z-10 max-w-3xl">
       {/* Glow effect */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,102,255,0.12),_transparent_70%)] pointer-events-none -z-10"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,102,255,0.12),transparent_70%)] pointer-events-none -z-10"></div>
 
       {/* Main Title */}
       <h1 className="text-5xl font-extrabold mb-4 tracking-tight">
