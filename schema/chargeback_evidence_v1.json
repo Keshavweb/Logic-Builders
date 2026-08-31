@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "chargeback_evidence_v1",
+  "title": "Chargeback Evidence Dossier",
+  "description": "Output schema for the chargeback-evidence-builder pipeline. Validated by the schema_validate node before returning to the backend.",
+  "type": "object",
+  "required": [
+    "dispute_id",
+    "confidence_score",
+    "confidence_label",
+    "signals",
+    "evidence_letter",
+    "missing_evidence"
+  ],
+  "properties": {
+    "dispute_id": {
+      "type": "string",
+      "description": "The dispute identifier passed in from the bank"
+    },
+    "confidence_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "0-100 score derived from how many signals are favorable"
+    },
+    "confidence_label": {
+      "type": "string",
+      "maxLength": 40,
+      "description": "Short plain-language label for the score, e.g. 'strong case', 'weak evidence'"
+    },
+    "signals": {
+      "type": "object",
+      "required": [
+        "delivery_confirmed",
+        "delivery_photo_available",
+        "device_match",
+        "address_match",
+        "prior_disputes_count",
+        "days_since_delivery"
+      ],
+      "properties": {
+        "delivery_confirmed": { "type": "boolean" },
+        "delivery_photo_available": { "type": "boolean" },
+        "device_match": { "type": "boolean" },
+        "address_match": { "type": "boolean" },
+        "prior_disputes_count": { "type": "integer", "minimum": 0 },
+        "days_since_delivery": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "evidence_letter": {
+      "type": "string",
+      "minLength": 50,
+      "description": "Formal evidence letter addressed to the payment processor's dispute team"
+    },
+    "missing_evidence": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of evidence items that could not be gathered. Empty array if all evidence collected."
+    }
+  },
+  "additionalProperties": false
+}

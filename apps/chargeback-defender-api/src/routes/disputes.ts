@@ -15,6 +15,7 @@ const router = Router()
 router.get('/', async (req, res) => {
   try {
     const status = typeof req.query.status === 'string' ? req.query.status : undefined
+    console.log(`[disputes] GET /api/disputes?status=${status || 'all'}`)
     const disputes = await getDisputes(status)
 
     // For list view, strip the full dossier to reduce payload
@@ -34,6 +35,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:dispute_id', async (req, res) => {
   try {
+    console.log(`[disputes] GET /api/disputes/${req.params.dispute_id}`)
     const dispute = await getDisputeById(req.params.dispute_id)
     if (!dispute) {
       res.status(404).json({ error: 'Dispute not found' })
@@ -50,6 +52,7 @@ router.get('/:dispute_id', async (req, res) => {
 
 router.post('/:dispute_id/approve', async (req, res) => {
   try {
+    console.log(`[disputes] POST /api/disputes/${req.params.dispute_id}/approve`)
     const dispute = await getDisputeById(req.params.dispute_id)
 
     if (!dispute) {
@@ -108,6 +111,7 @@ router.post('/:dispute_id/approve', async (req, res) => {
 
 router.post('/:dispute_id/reject', async (req, res) => {
   try {
+    console.log(`[disputes] POST /api/disputes/${req.params.dispute_id}/reject`)
     const dispute = await getDisputeById(req.params.dispute_id)
 
     if (!dispute) {

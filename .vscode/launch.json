@@ -33,6 +33,17 @@
         "webpack:///./*": "${workspaceFolder}/apps/meeting-intelligence-app1-ui/*",
         "webpack:///*": "*"
       }
+    },
+    {
+      "name": "Debug Logic Builders",
+      "type": "msedge",
+      "request": "launch",
+      "url": "https://staging.rocketride.ai:443/?appid=logic_builders.logicBuilders&rrdev=1",
+      "webRoot": "${workspaceFolder}/apps/logicBuilders-ui",
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${workspaceFolder}/apps/logicBuilders-ui/*",
+        "webpack:///*": "*"
+      }
     }
   ]
 }

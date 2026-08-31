@@ -1,0 +1,249 @@
+{
+  "components": [
+    {
+      "id": "approved_in",
+      "provider": "webhook",
+      "name": "Webhook",
+      "config": {
+        "hideForm": true,
+        "mode": "Source",
+        "parameters": {},
+        "type": "webhook"
+      },
+      "ui": {
+        "position": {
+          "x": 20,
+          "y": 200
+        },
+        "measured": {
+          "width": 150,
+          "height": 234
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      }
+    },
+    {
+      "id": "question_1",
+      "provider": "question",
+      "name": "Question",
+      "config": {
+        "type": "question"
+      },
+      "ui": {
+        "position": {
+          "x": 240,
+          "y": 200
+        },
+        "measured": {
+          "width": 150,
+          "height": 68
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "text",
+          "from": "approved_in"
+        }
+      ]
+    },
+    {
+      "id": "submit_agent",
+      "provider": "agent_rocketride",
+      "name": "RocketRide Wave",
+      "config": {
+        "agent_description": "",
+        "instructions": [
+          "You are a chargeback submission processor. You receive an approved dispute dossier and must submit it.",
+          "",
+          "STEP 1: Parse the incoming JSON to extract: dispute_id, customer_id, dossier (the evidence package).",
+          "",
+          "STEP 2: Use stripe_submit to POST the evidence to the payment processor.",
+          "Since Stripe is stubbed for this build, call the mock endpoint:",
+          "POST http://localhost:3001/api/mock/stripe-submit",
+          "Body: { \"dispute_id\": \"...\", \"evidence_letter\": \"...\", \"signals\": {...} }",
+          "",
+          "STEP 3: Log the submission attempt by returning a JSON response with:",
+          "{",
+          "  \"dispute_id\": \"...\",",
+          "  \"submitted\": true,",
+          "  \"submitted_at\": \"2026-08-31T12:00:00.000Z\",",
+          "  \"processor_reference\": \"mock_ref_...\",",
+          "  \"status\": \"evidence_submitted\"",
+          "}",
+          "",
+          "If the submission fails, return:",
+          "{",
+          "  \"dispute_id\": \"...\",",
+          "  \"submitted\": false,",
+          "  \"error\": \"reason for failure\",",
+          "  \"status\": \"submission_failed\"",
+          "}",
+          "",
+          "Return ONLY valid JSON — no markdown, no backticks, no explanation text."
+        ],
+        "max_waves": 5,
+        "require_tool_call": false,
+        "parameters": {}
+      },
+      "ui": {
+        "position": {
+          "x": 460,
+          "y": 200
+        },
+        "measured": {
+          "width": 150,
+          "height": 106
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "questions",
+          "from": "question_1"
+        }
+      ]
+    },
+    {
+      "id": "ollama_1",
+      "provider": "llm_ollama",
+      "name": "Ollama",
+      "config": {
+        "profile": "llama3_2-3b",
+        "llama3_2-3b": {
+          "serverbase": "http://localhost:11434/v1"
+        },
+        "llama3_3": {
+          "serverbase": "http://localhost:11434/v1"
+        },
+        "llama3.2": {
+          "model": "llama3.2",
+          "host": "http://127.0.0.1:11434",
+          "serverbase": "http://127.0.0.1:11434/v1"
+        },
+        "parameters": {}
+      },
+      "ui": {
+        "position": {
+          "x": 460,
+          "y": 360
+        },
+        "measured": {
+          "width": 150,
+          "height": 68
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "control": [
+        {
+          "classType": "llm",
+          "from": "submit_agent"
+        }
+      ]
+    },
+    {
+      "id": "memory_internal_1",
+      "provider": "memory_internal",
+      "name": "Memory (Internal)",
+      "config": {
+        "type": "memory_internal"
+      },
+      "ui": {
+        "position": {
+          "x": 460,
+          "y": 460
+        },
+        "measured": {
+          "width": 150,
+          "height": 42
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "control": [
+        {
+          "classType": "memory",
+          "from": "submit_agent"
+        }
+      ]
+    },
+    {
+      "id": "stripe_submit",
+      "provider": "tool_http_request",
+      "name": "HTTP Request",
+      "config": {
+        "allowDELETE": true,
+        "allowGET": true,
+        "allowHEAD": false,
+        "allowOPTIONS": false,
+        "allowPATCH": true,
+        "allowPOST": true,
+        "allowPUT": true,
+        "maxConcurrentRequests": 5,
+        "rateLimitPerMinute": 100,
+        "rateLimitPerSecond": 10,
+        "type": "tool_http_request",
+        "urlWhitelist": [],
+        "serverName": "stripe_submit",
+        "description": "Submit evidence to the payment processor (Stripe stub). POST to http://localhost:3001/api/mock/stripe-submit with JSON body containing dispute_id, evidence_letter, and signals. Returns a processor_reference on success."
+      },
+      "ui": {
+        "position": {
+          "x": 680,
+          "y": 360
+        },
+        "measured": {
+          "width": 150,
+          "height": 42
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "control": [
+        {
+          "classType": "tool",
+          "from": "submit_agent"
+        }
+      ]
+    },
+    {
+      "id": "submission_out",
+      "provider": "response_answers",
+      "name": "Return Answers",
+      "config": {
+        "laneName": "answers"
+      },
+      "ui": {
+        "position": {
+          "x": 700,
+          "y": 200
+        },
+        "measured": {
+          "width": 150,
+          "height": 68
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "answers",
+          "from": "submit_agent"
+        }
+      ]
+    }
+  ],
+  "project_id": "3b4d659b-d616-49ab-bf9f-36b49be81f7d",
+  "version": 1,
+  "isLocked": false,
+  "snapToGrid": true,
+  "snapGridSize": [
+    10,
+    10
+  ],
+  "docRevision": 1
+}

@@ -9,6 +9,7 @@ const router = Router()
 const limit = pLimit(config.CONCURRENCY_LIMIT)
 
 router.post('/', async (req, res) => {
+  console.log(`[batch] Received POST /api/batch request`)
   // Validate request body
   const parsed = batchRequestSchema.safeParse(req.body)
   if (!parsed.success) {
