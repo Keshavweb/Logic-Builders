@@ -81,8 +81,7 @@ const LogicBuildersApp: React.FC<ShellAppProps> = ({
   React.useEffect(() => {
     const fetchDisputes = async () => {
       try {
-        const baseUrl = API_BASE_URL
-        const res = await fetch(`${baseUrl}/api/disputes`)
+        const res = await fetch(`${API_BASE_URL}/api/disputes`)
         if (res.ok) {
           const { disputes: realDisputes } = await res.json()
           if (Array.isArray(realDisputes)) {
@@ -90,10 +89,14 @@ const LogicBuildersApp: React.FC<ShellAppProps> = ({
           }
         }
       } catch (e) {
-        console.error('Failed to fetch initial disputes', e)
+        console.error('Failed to fetch disputes', e)
       }
     }
     fetchDisputes()
+    // Keep the Review Queue / Submission History in sync — the backend
+    // resolves submitted disputes to won/lost a few seconds after approval.
+    const id = setInterval(fetchDisputes, 5000)
+    return () => clearInterval(id)
   }, [])
 
   // ---------------------------------------------------------------------------

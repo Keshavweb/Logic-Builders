@@ -7,6 +7,7 @@ import disputesRouter from './routes/disputes.js'
 import mockRouter from './routes/mock.js'
 import statsRouter from './routes/stats.js'
 import webhooksRouter from './routes/webhooks.js'
+import { startOutcomeSimulator } from './services/outcomeSimulator.js'
 
 // ---------- Validate config ----------
 validateConfig()
@@ -44,6 +45,8 @@ async function start() {
       console.log(`[server] Chargeback Defender API running at http://localhost:${config.PORT}`)
       console.log(`[server] Concurrency limit: ${config.CONCURRENCY_LIMIT}`)
     })
+
+    startOutcomeSimulator()
   } catch (err) {
     console.error('[server] Failed to start:', err)
     process.exit(1)
