@@ -10,6 +10,25 @@ const limit = pLimit(config.CONCURRENCY_LIMIT)
 
 router.post('/', async (req, res) => {
   console.log(`[batch] Received POST /api/batch request`)
+  
+  // Pre-flight — the backing-service lookups (order/session/delivery/customer)
+  // must be reachable. By default these are mounted on this same server; set
+  // MOCK_SERVICES_URL to use the standalone apps/mock-services instead.
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 3000)
+    const probe = await fetch(
+      `${config.MOCK_SERVICES_URL}/api/mock/order?transaction_id=txn_clean`,
+      { signal: controller.signal },
+    )
+    clearTimeout(timeoutId)
+    if (!probe.ok) throw new Error(`probe returned ${probe.status}`)
+  } catch (err) {
+    console.error('[batch] Backing-service lookups unreachable:', err instanceof Error ? err.message : err)
+    res.status(503).json({ error: `Backing-service lookups unreachable at ${config.MOCK_SERVICES_URL}` })
+    return
+  }
+
   // Validate request body
   const parsed = batchRequestSchema.safeParse(req.body)
   if (!parsed.success) {
@@ -60,6 +79,8 @@ router.post('/', async (req, res) => {
         // Mark as 'building'
         await updateDisputeStatus(row.dispute_id, { status: 'building' })
 
+        console.log(`[batch] ${row.dispute_id} → starting pipeline call`)
+        
         // Call pipeline
         const dossier = await buildEvidence(
           {
@@ -83,7 +104,7 @@ router.post('/', async (req, res) => {
           dossier: dossier as unknown as Record<string, unknown>,
         })
 
-        console.log(`[batch] ${row.dispute_id} → pending_review (confidence: ${dossier.confidence_score})`)
+        console.log(`[batch] ${row.dispute_id} → done, confidence=${dossier.confidence_score}`)
       } catch (err) {
         // Individual failure — don't stop others
         const errorMessage = err instanceof Error ? err.message : 'Unknown error'
@@ -91,7 +112,7 @@ router.post('/', async (req, res) => {
           status: 'failed',
           error_message: errorMessage,
         })
-        console.error(`[batch] ${row.dispute_id} → failed: ${errorMessage}`)
+        console.error(`[batch] ${row.dispute_id} → FAILED: ${errorMessage}`)
       }
     }),
   )

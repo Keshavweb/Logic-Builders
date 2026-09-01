@@ -1,26 +1,51 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import { RocketRideClient } from 'rocketride'
 import { config } from '../config.js'
 import type { ValidatedBatchRow } from '../validation.js'
+import { dossierSchema } from '../validation.js'
+import { mockBuildEvidence, mockSubmitEvidence } from './mockPipeline.js'
 import {
-  mockBuildEvidence,
-  mockSubmitEvidence,
+  assembleDossier,
+  computeConfidence,
+  computeSignals,
+  fetchEvidenceData,
   type Dossier,
+  type EvidenceData,
   type SubmitResult,
-  type EvidenceItem,
-} from './mockPipeline.js'
+} from './scoring.js'
 
-// ---------- Client Factory ----------
+// ---------------------------------------------------------------------------
+// Evidence builder
+// ---------------------------------------------------------------------------
+//
+// The deterministic work (backing-service lookups, signal extraction,
+// confidence scoring, profile assembly) happens here in code. The local
+// llama3.2 model (via Ollama) is asked only to draft the prose evidence
+// letter from the assembled facts — the one job it does acceptably.
+//
+// NOTE: the RocketRide `.pipe` files in ../../pipelines describe the same flow
+// visually and would run against a LOCAL RocketRide engine, but the configured
+// engine here is RocketRide staging (cloud), which cannot reach this machine's
+// localhost Ollama / mock-services. So we call both directly over HTTP.
 
-function getClient() {
-  return new RocketRideClient({
-    uri: config.ROCKETRIDE_URI,
-    auth: config.ROCKETRIDE_APIKEY,
-  })
-}
-
-// ---------- Evidence builder ----------
+const LETTER_SYSTEM_PROMPT = [
+  "You are a chargeback dispute analyst writing to a card payment processor's dispute-resolution team.",
+  'The user message is a JSON object describing ONE dispute. It already contains every fact you may use',
+  '(dispute, reason_code, amount, the computed confidence_score/label, the evidence signals, the raw',
+  'order/session/delivery/customer records, and a missing_evidence list).',
+  '',
+  'Write a firm, professional evidence letter of 150-300 words that:',
+  '1. Identifies the dispute_id and the reason_code being contested.',
+  '2. Cites ONLY the specific favorable signals that are actually true in the input (delivery confirmation',
+  "   and date, delivery photo, signature, device match, address match, the customer's prior dispute count).",
+  '3. If missing_evidence is non-empty, briefly acknowledges the gaps; when confidence_label is',
+  '   "weak evidence" or "insufficient evidence", request a manual review instead of asserting a win.',
+  "4. Tailors the argument to reason_code: 'product_not_received' -> lead with delivery proof;",
+  "   'unauthorized_transaction' -> lead with device/IP/address match and account history;",
+  "   'duplicate_charge' -> note this is a single distinct transaction with no duplicate settlement found.",
+  '5. Closes by requesting resolution in the merchant\'s favour.',
+  '',
+  'Invent nothing that is not in the input. No markdown, no backticks.',
+  'Return ONLY a JSON object: {"evidence_letter": "<full letter>", "confidence_explanation": "<one sentence>"}',
+].join('\n')
 
 export async function buildEvidence(
   row: ValidatedBatchRow,
@@ -30,123 +55,171 @@ export async function buildEvidence(
     return mockBuildEvidence(row, index)
   }
 
-  const client = getClient()
-  await client.connect()
-  
-  // Read and override project_id to allow concurrent runs
-  const pipeJson = await fs.readFile(
-    path.join(process.cwd(), '../../pipelines/chargeback-evidence-builder.pipe'),
-    'utf-8'
-  )
-  const pipeline = JSON.parse(pipeJson)
-  pipeline.project_id = `ev-${row.dispute_id}-${Date.now()}`
+  const data = await fetchEvidenceData(row)
 
-  console.log(`[pipeline] buildEvidence: Calling RocketRide for ${row.dispute_id}...`)
-  const { token } = await client.use({ pipeline })
-  
+  let llm = { letter: '', explanation: '' }
   try {
-    const result = await client.send(token, JSON.stringify(row), {
-      objinfo: { name: `dispute-${row.dispute_id}.json` },
-      mimetype: 'text/plain',
-    })
-    console.log(`[pipeline] buildEvidence: RocketRide responded for ${row.dispute_id}`)
-    return parseDossier(result)
-  } finally {
-    await client.terminate(token) // REQUIRED
+    llm = await draftLetter(row, data)
+  } catch (err) {
+    console.error(
+      `[pipeline] draftLetter failed for ${row.dispute_id}, using fallback letter:`,
+      err instanceof Error ? err.message : err,
+    )
+  }
+
+  const dossier = assembleDossier(row, data, llm)
+  return dossierSchema.parse(dossier) as unknown as Dossier
+}
+
+// ---------------------------------------------------------------------------
+// LLM letter draft — Gemini if GEMINI_API_KEY is set, else local Ollama
+// ---------------------------------------------------------------------------
+
+async function draftLetter(
+  row: ValidatedBatchRow,
+  data: EvidenceData,
+): Promise<{ letter: string; explanation: string }> {
+  const { signals } = computeSignals(data)
+  const { score, label } = computeConfidence(signals, row.reason_code)
+
+  const factPayload = {
+    dispute_id: row.dispute_id,
+    reason_code: row.reason_code,
+    amount: typeof row.amount === 'string' ? parseFloat(row.amount) : row.amount,
+    currency: (data.order?.currency as string) ?? 'USD',
+    confidence_score: score,
+    confidence_label: label,
+    signals,
+    missing_evidence: data.lookupErrors,
+    order: data.order,
+    session: data.session,
+    delivery: data.delivery,
+    customer: data.customer,
+  }
+
+  const content = config.GEMINI_API_KEY
+    ? await callGemini(row.dispute_id, factPayload)
+    : await callOllama(row.dispute_id, factPayload)
+
+  const parsed = extractJsonObject(content)
+  return {
+    letter: String(parsed?.evidence_letter ?? '').trim(),
+    explanation: String(parsed?.confidence_explanation ?? '').trim(),
   }
 }
 
-// ---------- Submit to payment processor ----------
+async function callGemini(disputeId: string, factPayload: unknown): Promise<string> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 45_000)
+  try {
+    console.log(`[pipeline] draftLetter: calling Gemini for ${disputeId}...`)
+    const url = `https://generativelanguage.googleapis.com/v1/models/${config.GEMINI_MODEL}:generateContent?key=${config.GEMINI_API_KEY}`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: LETTER_SYSTEM_PROMPT }] },
+        contents: [{ role: 'user', parts: [{ text: JSON.stringify(factPayload) }] }],
+        generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
+      }),
+    })
+    if (!res.ok) {
+      throw new Error(`Gemini responded ${res.status}: ${(await res.text()).slice(0, 200)}`)
+    }
+    const body = (await res.json()) as any
+    console.log(`[pipeline] draftLetter: Gemini responded for ${disputeId}`)
+    return body?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('') ?? ''
+  } finally {
+    clearTimeout(timeout)
+  }
+}
 
-export async function submitEvidence(dossier: Dossier): Promise<SubmitResult> {
+async function callOllama(disputeId: string, factPayload: unknown): Promise<string> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 60_000)
+  try {
+    console.log(`[pipeline] draftLetter: calling Ollama for ${disputeId}...`)
+    const res = await fetch(`${config.OLLAMA_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: config.OLLAMA_MODEL,
+        stream: false,
+        format: 'json',
+        options: { temperature: 0.2 },
+        messages: [
+          { role: 'system', content: LETTER_SYSTEM_PROMPT },
+          { role: 'user', content: JSON.stringify(factPayload) },
+        ],
+      }),
+    })
+    if (!res.ok) throw new Error(`Ollama responded ${res.status}`)
+    const body = (await res.json()) as { message?: { content?: string } }
+    console.log(`[pipeline] draftLetter: Ollama responded for ${disputeId}`)
+    return body.message?.content ?? ''
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+// Pull the first balanced JSON object out of a model response that may wrap it
+// in prose or markdown fences.
+function extractJsonObject(raw: string): any | null {
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch {
+    /* fall through */
+  }
+  const start = raw.indexOf('{')
+  const end = raw.lastIndexOf('}')
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(raw.slice(start, end + 1))
+    } catch {
+      /* give up */
+    }
+  }
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// Submit evidence to the payment processor (Stripe stub)
+// ---------------------------------------------------------------------------
+
+export async function submitEvidence(
+  disputeId: string,
+  dossier: Dossier,
+): Promise<SubmitResult> {
   if (config.USE_MOCK_PIPELINE) {
     return mockSubmitEvidence(dossier)
   }
 
-  const client = getClient()
-  await client.connect()
-  
-  const pipeJson = await fs.readFile(
-    path.join(process.cwd(), '../../pipelines/chargeback-submit-and-log.pipe'),
-    'utf-8'
-  )
-  const pipeline = JSON.parse(pipeJson)
-  pipeline.project_id = `sub-${Date.now()}`
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15_000)
 
-  console.log(`[pipeline] submitEvidence: Calling RocketRide...`)
-  const { token } = await client.use({ pipeline })
-  
   try {
-    const result = await client.send(token, JSON.stringify(dossier), {
-      objinfo: { name: `submit-${Date.now()}.json` },
-      mimetype: 'text/plain',
+    const res = await fetch(`${config.MOCK_SERVICES_URL}/api/mock/stripe-submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        dispute_id: disputeId,
+        evidence_letter: dossier.evidence_letter,
+        confidence_score: dossier.confidence_score,
+      }),
     })
-    
-    // The pipeline returns answers in an array if response_answers is used
-    const answerStr = result?.answers?.[0] || '{}'
-    let answerObj: any = {}
-    try { answerObj = JSON.parse(answerStr) } catch (e) {}
 
-    console.log(`[pipeline] submitEvidence: RocketRide answered with status: ${answerObj.status || 'unknown'}`)
+    if (!res.ok) throw new Error(`stripe-submit responded ${res.status}`)
+    const body = (await res.json()) as { submitted_at?: string; status?: string }
 
     return {
-      success: answerObj.status !== 'submission_failed',
-      submitted_at: answerObj.submitted_at || new Date().toISOString(),
+      success: body.status !== 'submission_failed',
+      submitted_at: body.submitted_at ?? new Date().toISOString(),
     }
   } finally {
-    await client.terminate(token) // REQUIRED
-  }
-}
-
-// ---------- Defensive dossier parser (for real pipeline responses) ----------
-
-function parseDossier(raw: unknown): Dossier {
-  const rawObj = raw as any
-  const answerStr = rawObj?.answers?.[0] || '{}'
-  let obj: any = {}
-  try { obj = JSON.parse(answerStr) } catch (e) {
-    if (typeof raw === 'string') {
-      try { obj = JSON.parse(raw) } catch (e) {}
-    } else {
-      obj = rawObj
-    }
-  }
-  
-  console.log(`[pipeline] parseDossier: Parsed signals`, obj.signals)
-  
-  const signals = (obj.signals as Record<string, unknown>) || {}
-  
-  const supporting: EvidenceItem[] = []
-  if (signals.delivery_confirmed) supporting.push({ label: 'Delivery confirmed' })
-  if (signals.delivery_photo_available) supporting.push({ label: 'Delivery photo available' })
-  if (signals.device_match) supporting.push({ label: 'Device verified' })
-  if (signals.address_match) supporting.push({ label: 'Address matched' })
-  
-  const missing = (Array.isArray(obj.missing_evidence) ? obj.missing_evidence : []).map((m: any) => ({ label: String(m) }))
-
-  return {
-    confidence_score: typeof obj.confidence_score === 'number' ? obj.confidence_score : 0,
-    customer_profile: {
-      order_details: 'Order data pulled from CRM',
-      payment_info: 'Payment info pulled from gateway',
-      delivery_status: signals.delivery_confirmed ? 'Delivered' : 'Unknown',
-      delivery_timestamp: null,
-      delivery_address: null,
-      ip_address: null,
-      device_match: signals.device_match === true ? 'yes' : signals.device_match === false ? 'no' : 'unknown',
-      delivery_photo_url: signals.delivery_photo_available ? 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80' : null,
-      signature: null,
-      prior_history: {
-        count: Number(signals.prior_disputes_count ?? 0),
-        outcomes: []
-      }
-    },
-    evidence_analysis: {
-      supporting,
-      missing,
-      contradictory: [],
-      confidence_explanation: String(obj.confidence_label ?? 'Score based on signals.'),
-    },
-    evidence_letter: String(obj.evidence_letter ?? 'No evidence letter generated.'),
+    clearTimeout(timeout)
   }
 }

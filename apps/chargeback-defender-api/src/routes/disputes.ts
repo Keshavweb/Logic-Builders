@@ -6,7 +6,7 @@ import {
 } from '../db/disputes.js'
 import { submitEvidence } from '../services/pipeline.js'
 import { rejectSchema } from '../validation.js'
-import type { Dossier } from '../services/mockPipeline.js'
+import type { Dossier } from '../services/scoring.js'
 
 const router = Router()
 
@@ -18,13 +18,12 @@ router.get('/', async (req, res) => {
     console.log(`[disputes] GET /api/disputes?status=${status || 'all'}`)
     const disputes = await getDisputes(status)
 
-    // For list view, strip the full dossier to reduce payload
-    const slimmed = disputes.map(({ dossier, ...rest }) => ({
-      ...rest,
-      has_dossier: dossier !== null,
-    }))
+    // Include the full dossier — the Review Queue renders the profile grid,
+    // evidence analysis, and draft letter straight from it. Batch size is
+    // capped at 50 rows so the payload stays small.
+    const withFlag = disputes.map((d) => ({ ...d, has_dossier: d.dossier !== null }))
 
-    res.json({ disputes: slimmed })
+    res.json({ disputes: withFlag })
   } catch (err) {
     console.error('[disputes] GET / failed:', err)
     res.status(500).json({ error: 'Failed to fetch disputes' })
@@ -76,7 +75,7 @@ router.post('/:dispute_id/approve', async (req, res) => {
         return
       }
 
-      const result = await submitEvidence(dossier)
+      const result = await submitEvidence(dispute.dispute_id, dossier)
 
       const updated = await updateDisputeStatus(dispute.dispute_id, {
         status: 'submitted',

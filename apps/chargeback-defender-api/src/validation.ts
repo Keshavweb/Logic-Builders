@@ -25,6 +25,41 @@ export const batchRequestSchema = z.object({
 
 export type ValidatedBatchRow = z.infer<typeof batchRowSchema>
 
+// ---------- Dossier schema (pipeline output guard) ----------
+
+const evidenceItemSchema = z.object({
+  label: z.string(),
+  detail: z.string().optional(),
+})
+
+export const dossierSchema = z.object({
+  confidence_score: z.number().min(0).max(100),
+  confidence_label: z.string().min(1).max(40),
+  missing_evidence: z.array(z.string()),
+  customer_profile: z.object({
+    orderDetails: z.string().nullable(),
+    paymentInfo: z.string().nullable(),
+    deliveryStatus: z.string().nullable(),
+    deliveryTimestamp: z.string().nullable(),
+    deliveryAddress: z.string().nullable(),
+    ipAddress: z.string().nullable(),
+    deviceMatch: z.enum(['yes', 'no', 'unknown']),
+    deliveryPhotoUrl: z.string().nullable(),
+    signature: z.string().nullable(),
+    priorHistory: z.object({
+      count: z.number().int().min(0),
+      outcomes: z.array(z.string()),
+    }),
+  }),
+  evidence_analysis: z.object({
+    supporting: z.array(evidenceItemSchema),
+    missing: z.array(evidenceItemSchema),
+    contradictory: z.array(evidenceItemSchema),
+    confidenceExplanation: z.string(),
+  }),
+  evidence_letter: z.string().min(50),
+})
+
 // ---------- Reject schema ----------
 
 export const rejectSchema = z.object({

@@ -112,13 +112,7 @@
       "provider": "llm_ollama",
       "name": "Ollama",
       "config": {
-        "profile": "llama3_2-3b",
-        "llama3_2-3b": {
-          "serverbase": "http://localhost:11434/v1"
-        },
-        "llama3_3": {
-          "serverbase": "http://localhost:11434/v1"
-        },
+        "profile": "llama3.2",
         "llama3.2": {
           "model": "llama3.2",
           "host": "http://127.0.0.1:11434",
@@ -237,7 +231,7 @@
       ]
     }
   ],
-  "project_id": "3b4d659b-d616-49ab-bf9f-36b49be81f7d",
+  "project_id": "3a93dc89-de47-454a-b0ec-93f7a40b170d",
   "version": 1,
   "isLocked": false,
   "snapToGrid": true,

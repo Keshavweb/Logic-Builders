@@ -18,11 +18,6 @@ import type {
   ScreenName,
 } from './types'
 
-import {
-  processBatchDispute,
-  defaultDisputes,
-} from './services/disputeService'
-
 import Header from './components/Header'
 import BatchIntake from './components/BatchIntake'
 import ReviewQueue from './components/ReviewQueue'
@@ -38,6 +33,27 @@ import HeroHeader from './components/HeroHeader'
 // LOGIC BUILDERS APPLICATION
 // =============================================================================
 
+/** Map an API dispute row (with embedded dossier) to the UI DisputeRecord. */
+const mapDispute = (row: any): DisputeRecord => {
+  const profile = row.dossier?.customer_profile
+  return {
+    id: row.dispute_id,
+    customerId: row.customer_id,
+    product: profile?.orderDetails ?? 'Disputed product',
+    amount: row.amount,
+    reasonCode: row.reason_code,
+    deadline: row.deadline,
+    confidence: row.confidence_score ?? row.dossier?.confidence_score ?? 0,
+    status: row.status as DisputeRecord['status'],
+    outcome: (row.outcome ?? 'pending') as DisputeRecord['outcome'],
+    profile,
+    evidenceAnalysis: row.dossier?.evidence_analysis,
+    evidenceLetter: row.dossier?.evidence_letter,
+    submittedAt: row.submitted_at,
+    rejectReason: row.rejection_reason,
+  }
+}
+
 const LogicBuildersApp: React.FC<ShellAppProps> = ({
   isConnected,
   identity,
@@ -48,8 +64,7 @@ const LogicBuildersApp: React.FC<ShellAppProps> = ({
 
   const [batchProgress, setBatchProgress] = useState<BatchProgress[]>([])
 
-  const [disputes, setDisputes] =
-    useState<DisputeRecord[]>(defaultDisputes)
+  const [disputes, setDisputes] = useState<DisputeRecord[]>([])
 
   const [toast, setToast] = useState<string | null>(null)
 
@@ -60,23 +75,8 @@ const LogicBuildersApp: React.FC<ShellAppProps> = ({
         const res = await fetch(`${baseUrl}/api/disputes`)
         if (res.ok) {
           const { disputes: realDisputes } = await res.json()
-          if (realDisputes && realDisputes.length > 0) {
-            setDisputes(realDisputes.map((updated: any) => ({
-              id: updated.dispute_id,
-              customerId: updated.customer_id,
-              product: 'Disputed Product',
-              amount: updated.amount,
-              reasonCode: updated.reason_code,
-              deadline: updated.deadline,
-              confidence: updated.confidence_score ?? 0,
-              status: updated.status,
-              outcome: updated.outcome ?? 'pending',
-              profile: updated.dossier?.customer_profile,
-              evidenceAnalysis: updated.dossier?.evidence_analysis,
-              evidenceLetter: updated.dossier?.evidence_letter,
-              submittedAt: updated.submitted_at,
-              rejectReason: updated.rejection_reason
-            })))
+          if (Array.isArray(realDisputes)) {
+            setDisputes(realDisputes.map(mapDispute))
           }
         }
       } catch (e) {
@@ -203,34 +203,9 @@ const LogicBuildersApp: React.FC<ShellAppProps> = ({
             })
           })
 
-          setDisputes((prev) => {
-            const newDisputes = [...prev]
-            updatedDisputes.forEach((updated: any) => {
-              if (updated.status === 'pending_review') {
-                const idx = newDisputes.findIndex((d) => d.id === updated.dispute_id)
-                const mapped: DisputeRecord = {
-                  id: updated.dispute_id,
-                  customerId: updated.customer_id,
-                  product: 'Disputed Product',
-                  amount: updated.amount,
-                  reasonCode: updated.reason_code,
-                  deadline: updated.deadline,
-                  confidence: updated.confidence_score ?? 0,
-                  status: 'pending_review',
-                  outcome: 'pending',
-                  profile: updated.dossier?.customer_profile,
-                  evidenceAnalysis: updated.dossier?.evidence_analysis,
-                  evidenceLetter: updated.dossier?.evidence_letter,
-                }
-                if (idx >= 0) {
-                  newDisputes[idx] = mapped
-                } else {
-                  newDisputes.unshift(mapped)
-                }
-              }
-            })
-            return newDisputes
-          })
+          if (Array.isArray(updatedDisputes)) {
+            setDisputes(updatedDisputes.map(mapDispute))
+          }
 
           if (allDone) {
             clearInterval(pollInterval)

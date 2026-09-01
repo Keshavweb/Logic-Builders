@@ -4,6 +4,7 @@ import { config, validateConfig } from './config.js'
 import { initializeDatabase, shutdownDatabase } from './db/connection.js'
 import batchRouter from './routes/batch.js'
 import disputesRouter from './routes/disputes.js'
+import mockRouter from './routes/mock.js'
 import statsRouter from './routes/stats.js'
 import webhooksRouter from './routes/webhooks.js'
 
@@ -19,6 +20,7 @@ app.use(express.json({ limit: '2mb' }))
 // ---------- Routes ----------
 app.use('/api/batch', batchRouter)
 app.use('/api/disputes', disputesRouter)
+app.use('/api/mock', mockRouter)
 app.use('/api/stats', statsRouter)
 app.use('/api/webhooks', webhooksRouter)
 

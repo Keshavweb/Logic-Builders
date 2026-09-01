@@ -2,62 +2,95 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "chargeback_evidence_v1",
   "title": "Chargeback Evidence Dossier",
-  "description": "Output schema for the chargeback-evidence-builder pipeline. Validated by the schema_validate node before returning to the backend.",
+  "description": "Reference shape for the dossier assembled by chargeback-defender-api (services/scoring.ts assembleDossier). Stored in the disputes.dossier JSONB column and consumed directly by the Review Queue UI. The RocketRide pipeline only contributes evidence_letter and evidence_analysis.confidenceExplanation; every other field is computed in the API from the mock backing-service lookups.",
   "type": "object",
   "required": [
-    "dispute_id",
     "confidence_score",
     "confidence_label",
-    "signals",
-    "evidence_letter",
-    "missing_evidence"
+    "missing_evidence",
+    "customer_profile",
+    "evidence_analysis",
+    "evidence_letter"
   ],
   "properties": {
-    "dispute_id": {
-      "type": "string",
-      "description": "The dispute identifier passed in from the bank"
-    },
     "confidence_score": {
       "type": "integer",
       "minimum": 0,
       "maximum": 100,
-      "description": "0-100 score derived from how many signals are favorable"
+      "description": "0-100 score from computeConfidence(); base 20 plus weighted favorable signals"
     },
     "confidence_label": {
       "type": "string",
       "maxLength": 40,
-      "description": "Short plain-language label for the score, e.g. 'strong case', 'weak evidence'"
-    },
-    "signals": {
-      "type": "object",
-      "required": [
-        "delivery_confirmed",
-        "delivery_photo_available",
-        "device_match",
-        "address_match",
-        "prior_disputes_count",
-        "days_since_delivery"
-      ],
-      "properties": {
-        "delivery_confirmed": { "type": "boolean" },
-        "delivery_photo_available": { "type": "boolean" },
-        "device_match": { "type": "boolean" },
-        "address_match": { "type": "boolean" },
-        "prior_disputes_count": { "type": "integer", "minimum": 0 },
-        "days_since_delivery": { "type": "integer", "minimum": 0 }
-      },
-      "additionalProperties": false
-    },
-    "evidence_letter": {
-      "type": "string",
-      "minLength": 50,
-      "description": "Formal evidence letter addressed to the payment processor's dispute team"
+      "description": "strong case | moderate case | weak evidence | insufficient evidence"
     },
     "missing_evidence": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "List of evidence items that could not be gathered. Empty array if all evidence collected."
+      "description": "Evidence items that could not be gathered (failed lookups, absent photo/signature/address, etc.)"
+    },
+    "customer_profile": {
+      "type": "object",
+      "description": "camelCase — maps 1:1 to the UI CustomerProfile type",
+      "required": [
+        "orderDetails",
+        "paymentInfo",
+        "deliveryStatus",
+        "deliveryTimestamp",
+        "deliveryAddress",
+        "ipAddress",
+        "deviceMatch",
+        "deliveryPhotoUrl",
+        "signature",
+        "priorHistory"
+      ],
+      "properties": {
+        "orderDetails": { "type": ["string", "null"] },
+        "paymentInfo": { "type": ["string", "null"] },
+        "deliveryStatus": { "type": ["string", "null"] },
+        "deliveryTimestamp": { "type": ["string", "null"] },
+        "deliveryAddress": { "type": ["string", "null"] },
+        "ipAddress": { "type": ["string", "null"] },
+        "deviceMatch": { "enum": ["yes", "no", "unknown"] },
+        "deliveryPhotoUrl": { "type": ["string", "null"] },
+        "signature": { "type": ["string", "null"] },
+        "priorHistory": {
+          "type": "object",
+          "required": ["count", "outcomes"],
+          "properties": {
+            "count": { "type": "integer", "minimum": 0 },
+            "outcomes": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "evidence_analysis": {
+      "type": "object",
+      "required": ["supporting", "missing", "contradictory", "confidenceExplanation"],
+      "properties": {
+        "supporting": { "$ref": "#/definitions/evidenceItemList" },
+        "missing": { "$ref": "#/definitions/evidenceItemList" },
+        "contradictory": { "$ref": "#/definitions/evidenceItemList" },
+        "confidenceExplanation": { "type": "string" }
+      }
+    },
+    "evidence_letter": {
+      "type": "string",
+      "minLength": 50,
+      "description": "Formal evidence letter to the payment processor's dispute team (LLM-drafted, or a templated fallback)"
     }
   },
-  "additionalProperties": false
+  "definitions": {
+    "evidenceItemList": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label"],
+        "properties": {
+          "label": { "type": "string" },
+          "detail": { "type": "string" }
+        }
+      }
+    }
+  }
 }

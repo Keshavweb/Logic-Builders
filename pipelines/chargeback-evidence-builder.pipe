@@ -17,7 +17,7 @@
         },
         "measured": {
           "width": 150,
-          "height": 198
+          "height": 66
         },
         "nodeType": "default",
         "formDataValid": true
@@ -30,6 +30,12 @@
       "config": {
         "type": "question"
       },
+      "input": [
+        {
+          "lane": "text",
+          "from": "dispute_in"
+        }
+      ],
       "ui": {
         "position": {
           "x": 240,
@@ -37,300 +43,50 @@
         },
         "measured": {
           "width": 150,
-          "height": 68
+          "height": 66
         },
         "nodeType": "default",
         "formDataValid": true
-      },
-      "input": [
-        {
-          "lane": "text",
-          "from": "dispute_in"
-        }
-      ]
+      }
     },
     {
-      "id": "evidence_agent",
-      "provider": "agent_rocketride",
-      "name": "RocketRide Wave",
+      "id": "letter_prompt",
+      "provider": "prompt",
+      "name": "Prompt",
       "config": {
-        "agent_description": "",
         "instructions": [
-          "You are a chargeback evidence analyst. You receive a JSON dispute payload and must build a complete evidence dossier.",
+          "You are a chargeback dispute analyst writing to a card payment processor's dispute-resolution team.",
           "",
-          "STEP 1: Parse the incoming JSON to extract: dispute_id, order_id, customer_id, transaction_id, reason_code, amount, deadline.",
+          "The user message is a JSON object describing ONE dispute. It already contains every fact you may use:",
+          "- dispute_id, reason_code, amount, currency",
+          "- confidence_score (0-100) and confidence_label, already computed by the merchant's system",
+          "- signals: delivery_confirmed, delivery_photo_available, device_match, address_match, prior_disputes_count, days_since_delivery",
+          "- order, session, delivery, customer: the raw records looked up from the merchant's systems (fields may be null when a lookup failed)",
+          "- missing_evidence: a list of evidence items that could NOT be gathered",
           "",
-          "STEP 2: Use the order_api tool to look up order details by transaction_id (NOT dispute_id — it has no meaning outside the bank).",
+          "Write a firm, professional evidence letter (150-300 words) that:",
+          "1. Opens by identifying the dispute_id and the reason_code being contested.",
+          "2. Cites the SPECIFIC favorable signals present (e.g. 'delivery was confirmed by <carrier> on <delivered_at>', 'the order device fingerprint matched the customer's profile', 'the billing and shipping addresses match', 'this customer has no prior disputes'). Only mention a signal if it is actually true/favorable in the input.",
+          "3. If missing_evidence is non-empty, briefly acknowledges the gaps and states that the remaining record still supports the charge (or, when confidence_label is 'weak evidence' or 'insufficient evidence', requests a manual review instead of asserting a win).",
+          "4. Tailors the argument to reason_code: 'product_not_received' -> lead with delivery proof; 'unauthorized_transaction' -> lead with device/IP/address match and account history; 'duplicate_charge' -> note that this is a single distinct transaction and no duplicate settlement was found.",
+          "5. Closes by requesting the dispute be resolved in the merchant's favor.",
           "",
-          "STEP 3: Use sessions_api to look up session/device/IP data for this order.",
+          "Do NOT invent facts, tracking numbers, dates, or amounts that are not in the input. Do NOT use markdown or backticks.",
           "",
-          "STEP 4: Use delivery_api to check delivery/tracking status.",
-          "",
-          "STEP 5: Check customer_memory for this customer's prior dispute history.",
-          "",
-          "STEP 6: Score confidence based on how many signals are favorable. A missing signal (no photo, no session match) should LOWER confidence — do NOT ignore it.",
-          "",
-          "STEP 7: Draft a formal evidence letter addressed to the payment processor's dispute team, referencing the specific signals gathered.",
-          "",
-          "STEP 8: If any lookup fails or returns nothing, add it to missing_evidence and reflect it in a lower confidence score.",
-          "",
-          "You MUST return ONLY valid JSON matching this exact shape (no markdown, no backticks, no explanation):",
-          "",
-          "{",
-          "  \"dispute_id\": \"dp_9182\",",
-          "  \"confidence_score\": 82,",
-          "  \"confidence_label\": \"strong case\",",
-          "  \"signals\": {",
-          "    \"delivery_confirmed\": true,",
-          "    \"delivery_photo_available\": false,",
-          "    \"device_match\": true,",
-          "    \"address_match\": true,",
-          "    \"prior_disputes_count\": 0,",
-          "    \"days_since_delivery\": 3",
-          "  },",
-          "  \"evidence_letter\": \"Dear Dispute Resolution Team, ...\",",
-          "  \"missing_evidence\": [\"delivery_photo\"]",
-          "}",
-          "",
-          "Confidence scoring guide:",
-          "- delivery_confirmed=true: +20 points",
-          "- delivery_photo_available=true: +15 points",
-          "- device_match=true: +15 points",
-          "- address_match=true: +10 points",
-          "- prior_disputes_count=0: +10 points (each prior dispute: -5 points)",
-          "- days_since_delivery <= 3: +10 points",
-          "- Start from base 20. Cap at 0-100.",
-          "",
-          "confidence_label values:",
-          "- 80-100: 'strong case'",
-          "- 60-79: 'moderate case'",
-          "- 40-59: 'weak evidence'",
-          "- 0-39: 'insufficient evidence'"
+          "Return ONLY a JSON object with exactly these two keys:",
+          "{\"evidence_letter\": \"<the full letter as one string>\", \"confidence_explanation\": \"<one sentence explaining why the confidence score is what it is>\"}"
         ],
-        "max_waves": 10,
-        "require_tool_call": false,
         "parameters": {}
-      },
-      "ui": {
-        "position": {
-          "x": 460,
-          "y": 200
-        },
-        "measured": {
-          "width": 150,
-          "height": 106
-        },
-        "nodeType": "default",
-        "formDataValid": true
       },
       "input": [
         {
           "lane": "questions",
           "from": "question_1"
         }
-      ]
-    },
-    {
-      "id": "ollama_node",
-      "provider": "llm_ollama",
-      "name": "Ollama",
-      "config": {
-        "profile": "llama3_2-3b",
-        "llama3_2-3b": {
-          "serverbase": "http://127.0.0.1:11434"
-        },
-        "llama3_3": {
-          "serverbase": "http://localhost:11434/v1"
-        },
-        "llama3.2": {
-          "model": "llama3.2",
-          "host": "http://127.0.0.1:11434",
-          "serverbase": "http://127.0.0.1:11434/v1"
-        },
-        "parameters": {}
-      },
+      ],
       "ui": {
         "position": {
           "x": 460,
-          "y": 360
-        },
-        "measured": {
-          "width": 150,
-          "height": 68
-        },
-        "nodeType": "default",
-        "formDataValid": true
-      },
-      "control": [
-        {
-          "classType": "llm",
-          "from": "evidence_agent"
-        }
-      ]
-    },
-    {
-      "id": "memory_internal_1",
-      "provider": "memory_internal",
-      "name": "Memory (Internal)",
-      "config": {
-        "type": "memory_internal"
-      },
-      "ui": {
-        "position": {
-          "x": 460,
-          "y": 460
-        },
-        "measured": {
-          "width": 150,
-          "height": 42
-        },
-        "nodeType": "default",
-        "formDataValid": true
-      },
-      "control": [
-        {
-          "classType": "memory",
-          "from": "evidence_agent"
-        }
-      ]
-    },
-    {
-      "id": "order_api",
-      "provider": "tool_http_request",
-      "name": "HTTP Request",
-      "config": {
-        "allowDELETE": true,
-        "allowGET": true,
-        "allowHEAD": false,
-        "allowOPTIONS": false,
-        "allowPATCH": true,
-        "allowPOST": true,
-        "allowPUT": true,
-        "maxConcurrentRequests": 5,
-        "rateLimitPerMinute": 100,
-        "rateLimitPerSecond": 10,
-        "type": "tool_http_request",
-        "urlWhitelist": [],
-        "serverName": "order_api",
-        "description": "Look up order details by transaction_id from the merchant's store database. Call with GET http://localhost:3001/api/mock/order?transaction_id={transaction_id}. Returns order_details, payment_info, delivery_address."
-      },
-      "ui": {
-        "position": {
-          "x": 680,
-          "y": 320
-        },
-        "measured": {
-          "width": 150,
-          "height": 42
-        },
-        "nodeType": "default",
-        "formDataValid": true
-      },
-      "control": [
-        {
-          "classType": "tool",
-          "from": "evidence_agent"
-        }
-      ]
-    },
-    {
-      "id": "sessions_api",
-      "provider": "tool_http_request",
-      "name": "HTTP Request",
-      "config": {
-        "allowDELETE": true,
-        "allowGET": true,
-        "allowHEAD": false,
-        "allowOPTIONS": false,
-        "allowPATCH": true,
-        "allowPOST": true,
-        "allowPUT": true,
-        "maxConcurrentRequests": 5,
-        "rateLimitPerMinute": 100,
-        "rateLimitPerSecond": 10,
-        "type": "tool_http_request",
-        "urlWhitelist": [],
-        "serverName": "sessions_api",
-        "description": "Look up session/device/IP data for an order. Call with GET http://localhost:3001/api/mock/session?transaction_id={transaction_id}. Returns ip_address, device_fingerprint, device_match, login_location."
-      },
-      "ui": {
-        "position": {
-          "x": 680,
-          "y": 400
-        },
-        "measured": {
-          "width": 150,
-          "height": 42
-        },
-        "nodeType": "default",
-        "formDataValid": true
-      },
-      "control": [
-        {
-          "classType": "tool",
-          "from": "evidence_agent"
-        }
-      ]
-    },
-    {
-      "id": "delivery_api",
-      "provider": "tool_http_request",
-      "name": "HTTP Request",
-      "config": {
-        "allowDELETE": true,
-        "allowGET": true,
-        "allowHEAD": false,
-        "allowOPTIONS": false,
-        "allowPATCH": true,
-        "allowPOST": true,
-        "allowPUT": true,
-        "maxConcurrentRequests": 5,
-        "rateLimitPerMinute": 100,
-        "rateLimitPerSecond": 10,
-        "type": "tool_http_request",
-        "urlWhitelist": [],
-        "serverName": "delivery_api",
-        "description": "Look up courier tracking and delivery status. Call with GET http://localhost:3001/api/mock/delivery?transaction_id={transaction_id}. Returns status (delivered/in_transit/unknown), delivered_at, signature_available, photo_available, carrier."
-      },
-      "ui": {
-        "position": {
-          "x": 680,
-          "y": 480
-        },
-        "measured": {
-          "width": 150,
-          "height": 42
-        },
-        "nodeType": "default",
-        "formDataValid": true
-      },
-      "control": [
-        {
-          "classType": "tool",
-          "from": "evidence_agent"
-        }
-      ]
-    },
-    {
-      "id": "evidence_schema_check",
-      "provider": "schema_validate",
-      "name": "Schema Validate",
-      "config": {
-        "profile": "default",
-        "default": {
-          "amount_field": "amount",
-          "category_field": "category",
-          "category_metric_map": {},
-          "currency_field": "currency",
-          "metric_field": "metric",
-          "require_provenance": "error",
-          "sign": "warning"
-        },
-        "schema_path": "schema/chargeback_evidence_v1.json"
-      },
-      "ui": {
-        "position": {
-          "x": 700,
           "y": 200
         },
         "measured": {
@@ -339,48 +95,66 @@
         },
         "nodeType": "default",
         "formDataValid": true
+      }
+    },
+    {
+      "id": "letter_llm",
+      "provider": "llm_ollama",
+      "name": "Ollama",
+      "config": {
+        "profile": "llama3_2-3b",
+        "llama3_2-3b": {
+          "model": "llama3.2",
+          "serverbase": "http://127.0.0.1:11434/v1"
+        },
+        "parameters": {}
       },
       "input": [
         {
-          "lane": "answers",
-          "from": "evidence_agent"
+          "lane": "questions",
+          "from": "letter_prompt"
         }
-      ]
+      ],
+      "ui": {
+        "position": {
+          "x": 680,
+          "y": 200
+        },
+        "measured": {
+          "width": 150,
+          "height": 66
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      }
     },
     {
-      "id": "dossier_out",
+      "id": "letter_out",
       "provider": "response_answers",
       "name": "Return Answers",
       "config": {
         "laneName": "answers"
       },
+      "input": [
+        {
+          "lane": "answers",
+          "from": "letter_llm"
+        }
+      ],
       "ui": {
         "position": {
-          "x": 920,
+          "x": 900,
           "y": 200
         },
         "measured": {
           "width": 150,
-          "height": 68
+          "height": 66
         },
         "nodeType": "default",
         "formDataValid": true
-      },
-      "input": [
-        {
-          "lane": "answers",
-          "from": "evidence_schema_check"
-        }
-      ]
+      }
     }
   ],
-  "project_id": "c436d4a2-352f-4458-97bd-24ca4908d028",
-  "version": 1,
-  "isLocked": false,
-  "snapToGrid": true,
-  "snapGridSize": [
-    10,
-    10
-  ],
-  "docRevision": 6
+  "project_id": "0e272333-5af9-4682-892e-14f4435a3e6e",
+  "version": 1
 }

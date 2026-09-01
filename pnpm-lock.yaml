@@ -18,7 +18,7 @@ importers:
         specifier: ^2.8.5
         version: 2.8.6
       dotenv:
-        specifier: ^16.5.0
+        specifier: ^16.6.1
         version: 16.6.1
       express:
         specifier: ^5.1.0
@@ -29,6 +29,9 @@ importers:
       pg:
         specifier: ^8.16.0
         version: 8.23.0
+      rocketride:
+        specifier: file:../../.rocketride/client/rocketride.tgz
+        version: file:.rocketride/client/rocketride.tgz
       zod:
         specifier: ^3.25.0
         version: 3.25.76
@@ -133,6 +136,15 @@ importers:
       vite-plugin-css-injected-by-js:
         specifier: ^5.0.2
         version: 5.0.2(vite@8.2.2(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+
+  apps/mock-services:
+    dependencies:
+      cors:
+        specifier: ^2.8.6
+        version: 2.8.6
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
 
 packages:
 
