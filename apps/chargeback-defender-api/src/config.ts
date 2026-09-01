@@ -16,7 +16,9 @@ export const config = {
   GEMINI_MODEL: process.env.GEMINI_MODEL ?? 'gemini-3.6-flash',
   OLLAMA_URL: process.env.OLLAMA_URL ?? 'http://127.0.0.1:11434',
   OLLAMA_MODEL: process.env.OLLAMA_MODEL ?? 'llama3.2',
-  CONCURRENCY_LIMIT: parseInt(process.env.CONCURRENCY_LIMIT ?? '100', 10),
+  // How many disputes to build in parallel. Kept modest so large batches don't
+  // hammer the Gemini rate limit or exhaust the DB pool (max 10).
+  CONCURRENCY_LIMIT: parseInt(process.env.CONCURRENCY_LIMIT ?? '6', 10),
 } as const
 
 // Validate critical config at startup

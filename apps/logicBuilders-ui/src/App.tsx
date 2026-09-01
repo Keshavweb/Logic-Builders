@@ -174,11 +174,48 @@ const LogicBuildersApp: React.FC<ShellAppProps> = ({
       })
 
       if (!response.ok) {
-        throw new Error('Batch submission failed')
+        let detail = `Batch submission failed (${response.status})`
+        try {
+          const body = await response.json()
+          if (body?.error) detail = body.error
+          const fieldErrs = body?.details && Object.values(body.details).flat()
+          if (fieldErrs?.length) detail += `: ${fieldErrs.join('; ')}`
+        } catch {
+          /* keep default */
+        }
+        setBatchProgress((prev) =>
+          prev.map((e) => ({ ...e, status: 'failed', label: 'Failed', error: detail })),
+        )
+        showToast(detail)
+        return
+      }
+
+      // Mark rows the API could not even queue as failed up front.
+      try {
+        const { errors } = await response.clone().json()
+        if (Array.isArray(errors) && errors.length) {
+          const failedIds = new Map(errors.map((x: any) => [x.dispute_id, x.error]))
+          setBatchProgress((prev) =>
+            prev.map((e) =>
+              failedIds.has(e.disputeId)
+                ? { ...e, status: 'failed', label: 'Failed', error: failedIds.get(e.disputeId) }
+                : e,
+            ),
+          )
+        }
+      } catch {
+        /* non-fatal */
       }
 
       // Start polling
+      let ticks = 0
       const pollInterval = setInterval(async () => {
+        ticks += 1
+        if (ticks > 300) {
+          clearInterval(pollInterval)
+          showToast('Batch is taking longer than expected — check the Review Queue.')
+          return
+        }
         try {
           const res = await fetch(`${baseUrl}/api/disputes`)
           if (!res.ok) return
@@ -188,8 +225,13 @@ const LogicBuildersApp: React.FC<ShellAppProps> = ({
 
           setBatchProgress((prev) => {
             return prev.map((entry) => {
+              if (entry.status === 'failed') return entry
+
               const updated = updatedDisputes.find((d: any) => d.dispute_id === entry.disputeId)
-              if (!updated) return entry
+              if (!updated) {
+                allDone = false // not in the DB yet — keep polling
+                return entry
+              }
 
               const status = updated.status
               const labelMap: Record<string, string> = {

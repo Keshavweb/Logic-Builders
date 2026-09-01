@@ -20,7 +20,7 @@ export const batchRequestSchema = z.object({
   disputes: z
     .array(batchRowSchema)
     .min(1, 'At least one dispute row is required')
-    .max(50, 'Maximum 50 disputes per batch'),
+    .max(500, 'Maximum 500 disputes per batch'),
 })
 
 export type ValidatedBatchRow = z.infer<typeof batchRowSchema>
