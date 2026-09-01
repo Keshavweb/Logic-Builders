@@ -21,5 +21,5 @@ React (TSX) · REST API · Llama 3.2 via Ollama · JSON Schema validation
 
 ## Links
 - Live Demo: https://drive.google.com/file/d/1PLFM1x5U8XSnY-M6O8MG2reu-0wmmREe/view?usp=sharing
-- Repo: github.com/Keshavweb/Logic-Builders
+- Repo: github.com/Keshavweb/Logic-Builders/
 - PPT: https://docs.google.com/presentation/d/1_mQkIcE-tlQhZMgatwM7kUVjXguEu4BQ/edit?usp=sharing&ouid=113480020379869204309&rtpof=true&sd=true
