@@ -17,7 +17,7 @@
         },
         "measured": {
           "width": 150,
-          "height": 234
+          "height": 174
         },
         "nodeType": "default",
         "formDataValid": true
@@ -113,6 +113,9 @@
       "name": "Ollama",
       "config": {
         "profile": "llama3.2",
+        "llama3_3": {
+          "serverbase": "http://localhost:11434/v1"
+        },
         "llama3.2": {
           "model": "llama3.2",
           "host": "http://127.0.0.1:11434",
@@ -130,7 +133,7 @@
           "height": 68
         },
         "nodeType": "default",
-        "formDataValid": true
+        "formDataValid": false
       },
       "control": [
         {
@@ -239,5 +242,5 @@
     10,
     10
   ],
-  "docRevision": 1
+  "docRevision": 2
 }

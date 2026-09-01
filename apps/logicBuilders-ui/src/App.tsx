@@ -33,6 +33,16 @@ import HeroHeader from './components/HeroHeader'
 // LOGIC BUILDERS APPLICATION
 // =============================================================================
 
+// Where the chargeback-defender API lives. Set at build time:
+//   - Vite build/dev:  VITE_API_BASE_URL
+//   - rsbuild (RocketRide shell):  PUBLIC_API_BASE_URL
+// Falls back to localhost for local dev.
+const ENV = ((import.meta as any).env ?? {}) as Record<string, string | undefined>
+const API_BASE_URL =
+  ENV.VITE_API_BASE_URL ||
+  ENV.PUBLIC_API_BASE_URL ||
+  'http://localhost:4000'
+
 /** Map an API dispute row (with embedded dossier) to the UI DisputeRecord. */
 const mapDispute = (row: any): DisputeRecord => {
   const profile = row.dossier?.customer_profile
@@ -71,7 +81,7 @@ const LogicBuildersApp: React.FC<ShellAppProps> = ({
   React.useEffect(() => {
     const fetchDisputes = async () => {
       try {
-        const baseUrl = process.env.PUBLIC_API_BASE_URL || 'http://localhost:4000'
+        const baseUrl = API_BASE_URL
         const res = await fetch(`${baseUrl}/api/disputes`)
         if (res.ok) {
           const { disputes: realDisputes } = await res.json()
@@ -156,7 +166,7 @@ const LogicBuildersApp: React.FC<ShellAppProps> = ({
     )
 
     try {
-      const baseUrl = process.env.PUBLIC_API_BASE_URL || 'http://localhost:4000'
+      const baseUrl = API_BASE_URL
       const response = await fetch(`${baseUrl}/api/batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -231,7 +241,7 @@ const LogicBuildersApp: React.FC<ShellAppProps> = ({
 
   const handleApprove = async (id: string) => {
     try {
-      const baseUrl = process.env.PUBLIC_API_BASE_URL || 'http://localhost:4000'
+      const baseUrl = API_BASE_URL
       const res = await fetch(`${baseUrl}/api/disputes/${id}/approve`, {
         method: 'POST'
       })
@@ -267,7 +277,7 @@ const LogicBuildersApp: React.FC<ShellAppProps> = ({
 
   const handleReject = async (id: string, reason: string) => {
     try {
-      const baseUrl = process.env.PUBLIC_API_BASE_URL || 'http://localhost:4000'
+      const baseUrl = API_BASE_URL
       const res = await fetch(`${baseUrl}/api/disputes/${id}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
