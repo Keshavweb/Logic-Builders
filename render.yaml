@@ -44,7 +44,7 @@ services:
     runtime: static
     plan: free
     rootDir: apps/logicBuilders-ui
-    buildCommand: npm ci && npx vite build
+    buildCommand: npm install && npx vite build
     staticPublishPath: dist
     routes:
       - type: rewrite
